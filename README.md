@@ -58,7 +58,7 @@ src/
 
 ## 代码规范
 
-项目严格遵循 `/Users/zla3/work/murphy/requirement/.cursor` 下的规则，已通过 `install.sh` 安装到 `.cursor/rules/`。
+项目严格遵循 `.cursor` 下的规则，已通过 `install.sh` 安装到 `.cursor/rules/`。
 
 ## 演示账号
 
