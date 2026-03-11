@@ -1,0 +1,170 @@
+---
+description: Excel 导出功能规范 - 适用于导出相关功能
+globs:
+  - app/**/*export*.tsx
+  - components/**/*export*.tsx
+version: "1.0"
+dependencies:
+  - forbidden.mdc
+  - ui-components.mdc
+---
+
+# Excel 导出功能规范
+
+使用 `xlsx` 库实现表格数据导出功能。
+
+## 依赖安装
+
+```bash
+pnpm add xlsx
+```
+
+## 导入方式
+
+```tsx
+import { format } from 'date-fns';
+import { Download } from 'lucide-react';
+import { toast } from 'sonner';
+import * as XLSX from 'xlsx';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+```
+
+## State 定义
+
+```tsx
+const [exportDialogOpen, setExportDialogOpen] = React.useState(false);
+const [exportFileName, setExportFileName] = React.useState('');
+```
+
+## 打开导出对话框
+
+```tsx
+const openExportDialog = React.useCallback(() => {
+  setExportFileName(`导出数据_${format(new Date(), 'yyyyMMdd_HHmmss')}`);
+  setExportDialogOpen(true);
+}, []);
+```
+
+## 导出逻辑
+
+```tsx
+const handleExport = React.useCallback(() => {
+  try {
+    // 1. 构建主表数据
+    const mainData = filteredData.map((d) => ({
+      字段1: d.field1,
+      字段2: d.field2,
+    }));
+
+    // 2. 构建明细数据（如有子表）
+    const detailData = [];
+    filteredData.forEach((d) => {
+      d.children?.forEach((c) => {
+        detailData.push({ 父ID: d.id, 子字段: c.name });
+      });
+    });
+
+    // 3. 创建工作簿
+    const wb = XLSX.utils.book_new();
+
+    // 4. 添加主表工作表
+    const ws1 = XLSX.utils.json_to_sheet(mainData);
+    ws1['!cols'] = [{ wch: 20 }, { wch: 15 }];
+    XLSX.utils.book_append_sheet(wb, ws1, '主表');
+
+    // 5. 添加明细工作表（可选）
+    if (detailData.length > 0) {
+      const ws2 = XLSX.utils.json_to_sheet(detailData);
+      XLSX.utils.book_append_sheet(wb, ws2, '明细');
+    }
+
+    // 6. 生成文件名
+    const fileName = exportFileName.trim()
+      ? `${exportFileName.trim()}.xlsx`
+      : `导出数据_${format(new Date(), 'yyyyMMdd_HHmmss')}.xlsx`;
+
+    // 7. 下载文件
+    XLSX.writeFile(wb, fileName);
+
+    // 8. 关闭对话框并提示
+    setExportDialogOpen(false);
+    toast.success(`导出成功：${mainData.length} 条记录`);
+  } catch (error) {
+    console.error('导出失败:', error);
+    toast.error('导出失败，请重试');
+  }
+}, [filteredData, exportFileName]);
+```
+
+## 导出按钮
+
+```tsx
+<Button variant="outline" onClick={openExportDialog}>
+  <Download className="mr-2 h-4 w-4" />
+  导出
+</Button>
+```
+
+## 导出对话框
+
+```tsx
+<Dialog open={exportDialogOpen} onOpenChange={setExportDialogOpen}>
+  <DialogContent className="sm:max-w-md">
+    <DialogHeader>
+      <DialogTitle>导出数据</DialogTitle>
+      <DialogDescription>
+        将导出 {filteredData.length} 条记录
+      </DialogDescription>
+    </DialogHeader>
+    <div className="space-y-4 py-4">
+      <div className="space-y-2">
+        <Label htmlFor="fileName">文件名</Label>
+        <div className="flex items-center gap-2">
+          <Input
+            id="fileName"
+            value={exportFileName}
+            onChange={(e) => setExportFileName(e.target.value)}
+            placeholder="请输入文件名"
+            className="flex-1"
+          />
+          <span className="text-sm text-gray-500">.xlsx</span>
+        </div>
+      </div>
+    </div>
+    <DialogFooter>
+      <Button variant="outline" onClick={() => setExportDialogOpen(false)}>
+        取消
+      </Button>
+      <Button onClick={handleExport}>
+        <Download className="mr-2 h-4 w-4" />
+        确认导出
+      </Button>
+    </DialogFooter>
+  </DialogContent>
+</Dialog>
+```
+
+## 导出功能要点
+
+| 要点 | 说明 |
+|------|------|
+| **导出过滤后数据** | 使用 `filteredData` 而非原始数据 |
+| **多工作表** | 主表 + 明细表分开 |
+| **列宽设置** | 使用 `ws['!cols']` 设置列宽 |
+| **默认文件名** | 包含时间戳避免覆盖 |
+| **用户可修改** | 弹出对话框允许修改文件名 |
+| **错误处理** | try-catch 包裹，失败时 toast 提示 |
+
+## 禁止事项
+
+- ❌ 不要直接导出，先弹出对话框让用户确认
+- ❌ 不要硬编码文件名，应包含时间戳
+- ❌ 不要忘记设置列宽（否则内容可能被截断）
+- ❌ 不要忘记 toast 提示导出结果

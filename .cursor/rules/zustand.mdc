@@ -1,0 +1,82 @@
+---
+description: Zustand Store 规范 - 适用于客户端状态管理
+globs:
+  - hooks/use-*-store.ts
+version: "1.0"
+dependencies:
+  - forbidden.mdc
+---
+
+# Zustand Store 规范
+
+**位置**: `hooks/use-{domain}-store.ts`
+
+## 模板
+
+```typescript
+"use client";
+
+import { create } from "zustand";
+import type { Entity } from "@/types/entity-types";
+
+interface EntityStoreState {
+  // 状态
+  entities: Entity[];
+  initialized: boolean;
+  
+  // Actions
+  setEntities: (entities: Entity[]) => void;
+  getEntityById: (id: string) => Entity | undefined;
+  reset: () => void;
+}
+
+export const useEntityStore = create<EntityStoreState>((set, get) => ({
+  // 初始状态
+  entities: [],
+  initialized: false,
+  
+  // Actions
+  setEntities: (entities) => set({ entities, initialized: true }),
+  getEntityById: (id) => get().entities.find((e) => e.businessId === id),
+  reset: () => set({ entities: [], initialized: false }),
+}));
+```
+
+## 使用场景
+
+| 场景 | 推荐方案 |
+|------|----------|
+| 服务端数据 | React Query（自动缓存、刷新） |
+| 客户端 UI 状态 | Zustand（模态框、侧边栏状态） |
+| URL 状态 | nuqs（搜索、分页、过滤） |
+| 跨组件共享 | Zustand |
+
+## 示例：UI 状态管理
+
+```typescript
+"use client";
+
+import { create } from "zustand";
+
+interface UIStoreState {
+  sidebarOpen: boolean;
+  selectedIds: string[];
+  toggleSidebar: () => void;
+  setSelectedIds: (ids: string[]) => void;
+  clearSelection: () => void;
+}
+
+export const useUIStore = create<UIStoreState>((set) => ({
+  sidebarOpen: true,
+  selectedIds: [],
+  toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
+  setSelectedIds: (ids) => set({ selectedIds: ids }),
+  clearSelection: () => set({ selectedIds: [] }),
+}));
+```
+
+## 禁止事项
+
+- ❌ 在 Store 中存储服务端数据（应使用 React Query）
+- ❌ 忘记添加 `"use client"` 指令
+- ❌ 在 Store 中发起网络请求

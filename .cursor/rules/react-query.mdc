@@ -1,0 +1,68 @@
+---
+description: React Query Hooks 规范 - 适用于数据 Hook
+globs:
+  - hooks/use-*.ts
+  - hooks/use-*.tsx
+version: "1.0"
+dependencies:
+  - forbidden.mdc
+---
+
+# React Query Hooks 规范
+
+**位置**: `hooks/use-{domain}.ts`
+
+## 必须遵守
+
+- 使用 `useMutation` 处理变更操作
+- `mutationFn` 中检查 `res.success`，失败时 `throw new Error(res.error)`
+- 包含 `onSuccess` 调用 `invalidateQueries`
+- 包含 `onError` 记录错误
+- 返回 mutation 实例供组件使用
+
+## 模板
+
+```typescript
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { createEntity, listEntities, deleteEntityByBusinessId } from "@/server/actions/entityAction";
+import type { Entity, EntityFormData } from "@/types/entity-types";
+
+export function useEntities() {
+  const queryClient = useQueryClient();
+
+  const { data: entities = [], isLoading, refetch } = useQuery({
+    queryKey: ["entities"],
+    queryFn: async () => (await listEntities()) as Entity[],
+    staleTime: 0,
+  });
+
+  const createEntityMutation = useMutation({
+    mutationFn: async (payload: EntityFormData) => {
+      const res = await createEntity(payload);
+      if (!res.success) throw new Error(res.error || "创建失败");
+      return res;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["entities"] }),
+    onError: (error) => console.error("创建失败:", error),
+  });
+
+  const deleteEntityMutation = useMutation({
+    mutationFn: async (businessId: string) => {
+      const res = await deleteEntityByBusinessId(businessId);
+      if (!res.success) throw new Error(res.error || "删除失败");
+      return res;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["entities"] }),
+    onError: (error) => console.error("删除失败:", error),
+  });
+
+  return { entities, isLoading, refetch, createEntityMutation, deleteEntityMutation };
+}
+```
+
+## 禁止事项
+
+- ❌ 自定义 mutation 对象（手动管理 isLoading/error）
+- ❌ 不使用 `useMutation` 处理变更操作
+- ❌ mutationFn 中不检查 `res.success`
+- ❌ 不调用 `invalidateQueries` 刷新缓存

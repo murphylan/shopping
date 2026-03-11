@@ -1,36 +1,75 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# H5 小商城
 
-## Getting Started
+基于 Next.js 16 的 H5 小商城，支持购物车、商品搜索等功能。
 
-First, run the development server:
+## 技术栈
+
+- **框架**: Next.js 16 + React 19 + TypeScript
+- **数据库**: Drizzle ORM + PostgreSQL
+- **状态管理**: TanStack React Query + Zustand + nuqs
+- **UI**: Tailwind CSS v4 + shadcn/ui
+- **表单**: React Hook Form + Zod
+- **身份验证**: NextAuth.js v5
+- **命令面板**: kbar (Cmd+K / Ctrl+K)
+
+## 快速开始
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+# 安装依赖
+pnpm install
+
+# 配置环境变量
+cp .env.example .env.local
+# 编辑 .env.local 配置 DATABASE_URL 和 AUTH_SECRET
+
+# 生成 AUTH_SECRET
+npx auth secret
+
+# 数据库迁移（需先启动 PostgreSQL）
+pnpm db:generate
+pnpm db:migrate
+
+# 开发
 pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 项目结构
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```
+src/
+├── app/
+│   ├── (auth)/login/     # 登录页
+│   ├── (platform)/       # 平台页面
+│   │   ├── products/     # 商品列表
+│   │   ├── search/       # 商品搜索（nuqs 管理 URL 参数）
+│   │   └── cart/         # 购物车
+│   └── api/auth/         # NextAuth 路由
+├── components/
+│   ├── ui/               # shadcn/ui 组件
+│   ├── shared/           # 业务共享组件
+│   └── providers.tsx     # 全局 Provider
+├── hooks/                # 自定义 Hooks
+├── server/
+│   ├── actions/          # Server Actions
+│   └── db/schema/        # Drizzle Schema
+├── types/                # 类型定义
+└── lib/                  # 工具函数
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 代码规范
 
-## Learn More
+项目严格遵循 `/Users/zla3/work/murphy/requirement/.cursor` 下的规则，已通过 `install.sh` 安装到 `.cursor/rules/`。
 
-To learn more about Next.js, take a look at the following resources:
+## 演示账号
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- 邮箱: demo@example.com
+- 密码: demo123
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 命令面板
 
-## Deploy on Vercel
+按 `Cmd+K` (Mac) 或 `Ctrl+K` (Windows) 打开命令面板，可快速跳转：
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- 首页 (h)
+- 商品列表 (p)
+- 商品搜索 (s)
+- 购物车 (c)

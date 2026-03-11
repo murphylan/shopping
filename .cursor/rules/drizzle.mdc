@@ -1,0 +1,70 @@
+---
+description: Drizzle ORM 规范 - 适用于数据库操作
+globs:
+  - server/db/**/*.ts
+  - server/actions/**/*.ts
+version: "1.0"
+dependencies:
+  - forbidden.mdc
+---
+
+# Drizzle ORM 规范
+
+## 常用操作
+
+```typescript
+import { db } from "@/server/db";
+import { entities } from "@/server/db/schema";
+import { eq, and, desc, asc, isNull, inArray } from "drizzle-orm";
+
+// 查询单条
+const [entity] = await db
+  .select()
+  .from(entities)
+  .where(eq(entities.businessId, businessId))
+  .limit(1);
+
+// 查询列表
+const results = await db
+  .select()
+  .from(entities)
+  .where(and(eq(entities.status, "active"), isNull(entities.parentId)))
+  .orderBy(asc(entities.order), desc(entities.createdAt));
+
+// 插入
+const [inserted] = await db
+  .insert(entities)
+  .values({ id: randomUUID(), businessId, title, createdBy: user.id, ... })
+  .returning();
+
+// 更新
+const [updated] = await db
+  .update(entities)
+  .set({ title, updatedAt: new Date() })
+  .where(eq(entities.businessId, businessId))
+  .returning();
+
+// 删除
+await db.delete(entities).where(eq(entities.businessId, businessId));
+```
+
+## 常用操作符
+
+| 操作符 | 用途 | 示例 |
+|--------|------|------|
+| `eq` | 等于 | `eq(table.id, value)` |
+| `and` | 且 | `and(cond1, cond2)` |
+| `or` | 或 | `or(cond1, cond2)` |
+| `desc` | 降序 | `orderBy(desc(table.createdAt))` |
+| `asc` | 升序 | `orderBy(asc(table.order))` |
+| `isNull` | 为空 | `isNull(table.parentId)` |
+| `isNotNull` | 不为空 | `isNotNull(table.deletedAt)` |
+| `inArray` | 在数组中 | `inArray(table.status, ['a', 'b'])` |
+| `like` | 模糊匹配 | `like(table.name, '%keyword%')` |
+| `ilike` | 忽略大小写模糊匹配 | `ilike(table.name, '%keyword%')` |
+
+## 禁止事项
+
+- ❌ 使用 Prisma（项目使用 Drizzle ORM）
+- ❌ 不使用 `.returning()` 获取插入/更新结果
+- ❌ 忘记 `.limit(1)` 查询单条记录

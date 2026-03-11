@@ -1,0 +1,133 @@
+---
+description: UI 样式规范（Databricks 风格）- 适用于 UI 开发
+globs:
+  - components/**/*.tsx
+  - app/**/*.tsx
+alwaysApply: true
+version: "1.0"
+dependencies:
+  - forbidden.mdc
+---
+
+# UI 样式规范（Databricks 风格）
+
+参考 Databricks 专业 SaaS 软件设计，遵循三大原则：
+- **清晰 (Clarity)**：用户能识别元素、预测操作结果
+- **简洁 (Simplicity)**：减少认知负担，避免视觉噪音
+- **高效 (Efficiency)**：优化工作流程，提供快捷操作
+
+## 8px 网格系统
+
+| 用途 | 间距 | Tailwind |
+|------|------|----------|
+| 紧凑间距 | 4px | `gap-1`, `p-1` |
+| 元素间距 | 8px | `gap-2`, `p-2` |
+| 组件间距 | 16px | `gap-4`, `p-4` |
+| 区块间距 | 24px | `gap-6`, `p-6` |
+| 页面间距 | 32px | `gap-8`, `p-8` |
+
+## 字体层级
+
+| 元素 | Tailwind |
+|------|----------|
+| 页面标题 | `text-xl font-semibold text-gray-900` |
+| 区块标题 | `text-base font-semibold` |
+| 卡片标题 | `text-sm font-medium` |
+| 正文 | `text-sm text-gray-700` |
+| 辅助文字 | `text-xs text-gray-500` |
+
+## 文字颜色层级
+
+```tsx
+<h1 className="text-gray-900 dark:text-gray-50">主标题</h1>
+<p className="text-gray-700 dark:text-gray-300">正文内容</p>
+<span className="text-gray-500 dark:text-gray-400">描述文字</span>
+```
+
+## 大小写规范
+
+- **Title Case**（标题、按钮、表头）：`Create Cluster`、`User Name`
+- **Sentence Case**（描述、提示）：`Click to view details`
+
+## 按钮规范
+
+所有按钮必须使用 **图标 + 文字** 组合：
+
+```tsx
+<Button><Plus className="mr-2 h-4 w-4" />Create</Button>
+<Button variant="outline"><Download className="mr-2 h-4 w-4" />Export</Button>
+<Button variant="destructive"><Trash2 className="mr-2 h-4 w-4" />Delete</Button>
+```
+
+## 状态指示器
+
+```tsx
+// Running - 绿色
+<span className="flex items-center gap-2">
+  <span className="h-2 w-2 animate-pulse rounded-full bg-green-500" />
+  <span className="text-sm text-green-600">Running</span>
+</span>
+
+// Pending - 橙色
+<span className="h-2 w-2 rounded-full bg-amber-500" />
+
+// Failed - 红色
+<span className="h-2 w-2 rounded-full bg-red-500" />
+
+// Terminated - 灰色
+<span className="h-2 w-2 rounded-full bg-gray-400" />
+```
+
+## 表格样式
+
+```tsx
+// 表头
+<thead className="border-b bg-gray-50 dark:bg-gray-900">
+  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+    Column Name
+  </th>
+</thead>
+
+// 数据行
+<tr className="hover:bg-gray-50 dark:hover:bg-gray-900/50">
+  <td className="px-4 py-3 text-sm text-gray-900">Cell content</td>
+</tr>
+```
+
+## 页面布局
+
+```tsx
+<PageContainer scrollable={false}>
+  <div className="flex h-full w-full flex-col gap-6 py-6">
+    {/* 页面头部 */}
+    <div className="flex shrink-0 items-center justify-between">
+      <div>
+        <h1 className="text-xl font-semibold text-gray-900">Page Title</h1>
+        <p className="mt-1 text-xs text-gray-500">Page description</p>
+      </div>
+      <div className="flex gap-2">
+        <Button variant="outline">Export</Button>
+        <Button><Plus className="mr-2 h-4 w-4" />Create</Button>
+      </div>
+    </div>
+
+    {/* 内容区域 - Flex 填充 */}
+    <Card className="flex min-h-0 flex-1 flex-col">
+      <CardContent className="flex min-h-0 flex-1 flex-col p-0">
+        <DataTableVirtualized table={table} />
+      </CardContent>
+    </Card>
+  </div>
+</PageContainer>
+```
+
+## 禁止事项
+
+- ❌ 使用全大写文字（除非是缩写如 ID、URL）
+- ❌ 表头居中对齐（应左对齐）
+- ❌ 使用非 8px 网格的间距
+- ❌ 按钮不带图标
+- ❌ 硬编码颜色值（如 `#333`）
+- ❌ 硬编码高度（如 `h-[500px]`）→ 使用 Flex 填充
+- ❌ 表单字段不带 Label
+- ❌ 状态不使用语义化颜色

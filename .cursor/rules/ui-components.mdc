@@ -1,0 +1,410 @@
+---
+description: React 组件与 UI 模式规范 - 适用于页面和组件开发
+globs:
+  - app/**/*.tsx
+  - components/**/*.tsx
+version: "1.0"
+dependencies:
+  - forbidden.mdc
+  - ui-style.mdc
+---
+
+# React 组件与 UI 模式规范
+
+> 基础样式规范（8px 网格、字体层级、颜色等）请参考 `ui-style.mdc`
+
+---
+
+## 第一部分：React 组件规范
+
+### 页面组件规范
+
+#### 必须遵守
+
+- 使用 `useTopLoader` 的 `start()`/`done()` 显示加载状态
+- 使用 `toast` from `sonner` 提示结果
+- 使用 `mutation.isPending`（不是 `isLoading`）
+- 使用 try-finally 包裹异步操作
+- **禁止** 将 `start`/`done` 添加到 `useCallback` 依赖（会导致死循环）
+
+#### 模板
+
+```tsx
+"use client";
+
+import { useCallback, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { useTopLoader } from "nextjs-toploader";
+import { toast } from "sonner";
+import { useEntities } from "@/hooks/use-entities";
+import type { EntityFormData } from "@/types/entity-types";
+
+export default function CreateEntityPage() {
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+  const { start, done } = useTopLoader();
+  const { createEntityMutation } = useEntities();
+
+  const handleCreate = useCallback(
+    async (values: EntityFormData) => {
+      start();
+      try {
+        const res = await createEntityMutation.mutateAsync(values);
+        if (res.success) {
+          toast.success("创建成功");
+          router.push("/entities");
+        } else {
+          toast.error(res.error || "创建失败");
+        }
+      } finally {
+        done();
+      }
+    },
+    [createEntityMutation, router] // ⚠️ 不添加 start/done
+  );
+
+  return (
+    <EntityForm
+      onSubmit={handleCreate}
+      submitting={createEntityMutation.isPending}
+    />
+  );
+}
+```
+
+### 删除功能规范
+
+必须使用 `DeleteConfirm` 组件，禁止 `window.confirm`：
+
+```tsx
+import { DeleteConfirm } from "@/components/DeleteConfirm";
+import { useTopLoader } from "nextjs-toploader";
+import { toast } from "sonner";
+
+function EntityRow({ entity }: { entity: Entity }) {
+  const { deleteEntityMutation } = useEntities();
+  const { start, done } = useTopLoader();
+
+  const handleDelete = useCallback(async () => {
+    start();
+    try {
+      const res = await deleteEntityMutation.mutateAsync(entity.businessId);
+      if (res.success) toast.success("已删除");
+      else toast.error(res.error || "删除失败");
+    } finally {
+      done();
+    }
+  }, [entity.businessId, deleteEntityMutation]);
+
+  return (
+    <DeleteConfirm
+      entityName={entity.title}
+      isLoading={deleteEntityMutation.isPending}
+      onConfirm={handleDelete}
+    />
+  );
+}
+```
+
+### 表单组件规范
+
+使用 React Hook Form + Zod：
+
+```tsx
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { entitySchema, type EntityFormData } from "@/types/entity-types";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+
+interface EntityFormProps {
+  defaultValues?: Partial<EntityFormData>;
+  onSubmit: (data: EntityFormData) => Promise<void>;
+  submitting?: boolean;
+}
+
+export function EntityForm({ defaultValues, onSubmit, submitting }: EntityFormProps) {
+  const form = useForm<EntityFormData>({
+    resolver: zodResolver(entitySchema),
+    defaultValues: defaultValues || { title: "", description: "" },
+  });
+
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <FormField
+          control={form.control}
+          name="title"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>标题</FormLabel>
+              <FormControl><Input {...field} /></FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <Button type="submit" disabled={submitting}>
+          {submitting ? "保存中..." : "保存"}
+        </Button>
+      </form>
+    </Form>
+  );
+}
+```
+
+---
+
+## 第二部分：UI 组件模式
+
+### 抽屉面板规范
+
+#### Sheet 组件结构
+
+抽屉面板使用三层布局结构：
+
+```
+SheetContent
+├── SheetHeader    # 顶部固定，带背景色
+├── SheetBody      # 中间可滚动
+└── SheetFooter    # 底部固定，带背景色
+```
+
+#### 样式规范
+
+| 组件 | 样式 |
+|------|------|
+| `SheetContent` | flex 布局，无 padding |
+| `SheetHeader` | `bg-gray-50/80`，`border-b`，`px-6 py-4` |
+| `SheetBody` | `flex-1 overflow-y-auto`，`px-6 py-6` |
+| `SheetFooter` | `bg-gray-50/50`，`border-t`，`px-6 py-4`，`flex justify-end gap-2` |
+
+#### 使用示例
+
+```tsx
+import {
+  Sheet,
+  SheetBody,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+
+<Sheet open={isOpen} onOpenChange={setIsOpen}>
+  <SheetContent>
+    <SheetHeader>
+      <SheetTitle>标题</SheetTitle>
+      <SheetDescription>描述文字</SheetDescription>
+    </SheetHeader>
+
+    <SheetBody>
+      <div className="space-y-4">
+        <div className="space-y-2">
+          <Label>字段名</Label>
+          <Input placeholder="请输入..." />
+        </div>
+        <div className="w-1/2 space-y-2">
+          <Label>状态</Label>
+          <Select>...</Select>
+        </div>
+      </div>
+    </SheetBody>
+
+    <SheetFooter>
+      <Button variant="outline" onClick={handleClose}>
+        <X className="mr-2 h-4 w-4" />
+        取消
+      </Button>
+      <Button onClick={handleSubmit}>
+        <Save className="mr-2 h-4 w-4" />
+        保存
+      </Button>
+    </SheetFooter>
+  </SheetContent>
+</Sheet>
+```
+
+#### 表单布局规范
+
+- ✅ 表单字段少时（<8个），一行一个字段
+- ✅ 状态/类型等短选项，使用 `w-1/2` 半宽
+- ✅ 地址/备注等长文本，保持全宽
+- ❌ 不要使用 `grid-cols-2`（抽屉宽度有限）
+
+---
+
+### 按钮规范
+
+#### 图标 + 文字风格
+
+所有按钮必须使用 **图标 + 文字** 组合：
+
+```tsx
+<Button>
+  <IconName className="mr-2 h-4 w-4" />
+  按钮文字
+</Button>
+```
+
+#### 常用按钮图标对照
+
+| 操作 | 图标 | 示例 |
+|------|------|------|
+| 新增 | `Plus` | `<Plus className="mr-2 h-4 w-4" />新增` |
+| 编辑 | `Edit` | `<Edit className="mr-2 h-4 w-4" />编辑` |
+| 删除 | `Trash2` | `<Trash2 className="mr-2 h-4 w-4" />删除` |
+| 保存 | `Save` | `<Save className="mr-2 h-4 w-4" />保存` |
+| 取消 | `X` | `<X className="mr-2 h-4 w-4" />取消` |
+| 关闭 | `Eye` | `<Eye className="mr-2 h-4 w-4" />关闭` |
+| 刷新 | `RefreshCcw` | `<RefreshCcw className="mr-2 h-4 w-4" />刷新` |
+| 导出 | `Download` | `<Download className="mr-2 h-4 w-4" />导出` |
+| 导入 | `Upload` | `<Upload className="mr-2 h-4 w-4" />导入` |
+| 启用 | `ShieldCheck` | `<ShieldCheck className="mr-2 h-4 w-4" />启用` |
+| 禁用 | `ShieldX` | `<ShieldX className="mr-2 h-4 w-4" />禁用` |
+| 确认 | `Check` | `<Check className="mr-2 h-4 w-4" />确认` |
+
+#### 按钮变体
+
+```tsx
+// 主要操作
+<Button>
+  <Plus className="mr-2 h-4 w-4" />
+  新增
+</Button>
+
+// 次要操作
+<Button variant="outline">
+  <Download className="mr-2 h-4 w-4" />
+  导出
+</Button>
+
+// 危险操作
+<Button variant="destructive">
+  <Trash2 className="mr-2 h-4 w-4" />
+  确认删除
+</Button>
+```
+
+---
+
+### 表格操作列规范
+
+#### 使用 DropdownMenu
+
+操作列使用下拉菜单而非平铺按钮：
+
+```tsx
+{
+  id: "actions",
+  size: 60,
+  header: "操作",
+  cell: ({ row }) => (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="icon" className="h-8 w-8">
+          <MoreHorizontal className="h-4 w-4" />
+          <span className="sr-only">打开菜单</span>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem onClick={() => handleEdit(row.original)}>
+          <Edit className="mr-2 h-4 w-4" />
+          编辑
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          className="text-red-600 focus:text-red-600"
+          onClick={() => handleDelete(row.original)}
+        >
+          <Trash2 className="mr-2 h-4 w-4" />
+          删除
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  ),
+  enableSorting: false,
+  enableHiding: false,
+  enablePinning: true,
+}
+```
+
+#### 操作列规范
+
+- ✅ 使用 `MoreHorizontal` 图标
+- ✅ 列宽设为 `size: 60`
+- ✅ 危险操作使用 `text-red-600` 颜色
+- ✅ 操作之间使用 `DropdownMenuSeparator` 分隔
+- ❌ 不要平铺多个按钮
+
+---
+
+### 搜索框规范
+
+#### 标准搜索框样式
+
+所有搜索框必须使用 **放大镜图标 + 清除按钮** 组合：
+
+```tsx
+import { Search, X } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+
+<div className="relative">
+  <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+  <Input
+    placeholder="搜索关键词..."
+    value={searchTerm}
+    onChange={(e) => setSearchTerm(e.target.value)}
+    className="h-8 pl-8 pr-8"
+  />
+  {searchTerm && (
+    <button
+      type="button"
+      onClick={() => setSearchTerm('')}
+      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+    >
+      <X className="h-4 w-4" />
+    </button>
+  )}
+</div>
+```
+
+#### 搜索框样式规范
+
+| 元素 | 样式 |
+|------|------|
+| 容器 | `relative` |
+| 放大镜图标 | `absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400` |
+| 输入框 | `pl-8 pr-8`（为两侧图标留出空间） |
+| 清除按钮 | `absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600` |
+| 清除图标 | `h-4 w-4` |
+
+#### DataTableToolbar 搜索框
+
+使用 `DataTableToolbar` 组件时，搜索框和清除按钮已内置：
+
+```tsx
+<DataTableVirtualized table={table}>
+  <DataTableToolbar table={table} />
+</DataTableVirtualized>
+```
+
+工具栏特性：
+- ✅ 自带放大镜图标
+- ✅ 全局搜索（globalFilter）
+- ✅ "清除" 按钮（重置所有筛选条件）
+- ✅ 支持列筛选器（品牌/区域等多选）
+
+---
+
+## 禁止事项
+
+> 详细禁止事项请参考 `forbidden.mdc`
+
+- ❌ 使用 `window.confirm`（使用 DeleteConfirm 组件）
+- ❌ 使用 `isLoading` 而非 `isPending`
+- ❌ 将 `start`/`done` 添加到 useCallback 依赖
+- ❌ 表格列定义不使用 `useMemo`
+- ❌ 使用 `grid-cols-2` 在抽屉中
+- ❌ 操作列平铺多个按钮

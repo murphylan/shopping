@@ -1,0 +1,196 @@
+---
+description: 数据调用架构规范 - 适用于数据层相关文件
+globs:
+  - server/actions/**/*.ts
+  - hooks/use-*.ts
+version: "1.0"
+dependencies:
+  - forbidden.mdc
+  - server-actions.mdc
+  - react-query.mdc
+---
+
+# 数据调用架构规范
+
+## 调用链路
+
+```
+页面组件 (Client Component)
+    ↓ 使用
+自定义 Hook (hooks/use-*.ts)
+    ↓ 内部使用 React Query (useQuery / useMutation)
+Server Actions (server/actions/*.ts)
+    ↓ 直接操作
+Drizzle ORM → PostgreSQL
+```
+
+## 设计原则
+
+| 原则 | 说明 |
+|------|------|
+| **架构清晰** | 页面 → Hook → Server Action → 数据库，职责分离 |
+| **类型安全** | 复用 types/ 目录中的类型定义 |
+| **统一返回** | Server Action 返回 `{ success, data?, error? }` |
+| **权限检查** | Server Action 必须验证用户登录状态 |
+
+## 1. Server Action
+
+```typescript
+// server/actions/verificationAction.ts
+"use server";
+
+import { getCurrentUser } from "@/server/auth/require-auth";
+import { db } from "@/server/db";
+import { verifications } from "@/server/db/schema";
+import { eq, and, desc } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
+import "server-only";
+import type { VerificationFilters } from "@/types/verification-types";
+
+export async function listVerifications(filters?: VerificationFilters) {
+  const user = await getCurrentUser();
+  if (!user) {
+    return { success: false, error: "未登录" };
+  }
+
+  try {
+    let query = db.select().from(verifications);
+    
+    // 应用过滤条件
+    const conditions = [];
+    if (filters?.couponNo) {
+      conditions.push(eq(verifications.couponNo, filters.couponNo));
+    }
+    if (filters?.storeId) {
+      conditions.push(eq(verifications.storeId, filters.storeId));
+    }
+    
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions));
+    }
+    
+    const data = await query.orderBy(desc(verifications.createdAt));
+    return { success: true, data };
+  } catch (error) {
+    console.error("Failed to list verifications:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "查询失败",
+    };
+  }
+}
+
+export async function pushVerification(businessId: string) {
+  const user = await getCurrentUser();
+  if (!user) {
+    return { success: false, error: "未登录" };
+  }
+
+  try {
+    const [updated] = await db
+      .update(verifications)
+      .set({ status: "pushed", updatedAt: new Date(), updatedBy: user.id })
+      .where(eq(verifications.businessId, businessId))
+      .returning();
+
+    revalidatePath("/verifications");
+    return { success: true, data: updated };
+  } catch (error) {
+    console.error("Failed to push verification:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "推送失败",
+    };
+  }
+}
+```
+
+## 2. 自定义 Hook
+
+```typescript
+// hooks/use-verifications.ts
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { listVerifications, pushVerification } from "@/server/actions/verificationAction";
+import type { Verification, VerificationFilters } from "@/types/verification-types";
+
+export function useVerifications(filters?: VerificationFilters) {
+  const queryClient = useQueryClient();
+
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: ["verifications", filters],
+    queryFn: async () => {
+      const res = await listVerifications(filters);
+      if (!res.success) throw new Error(res.error);
+      return res.data as Verification[];
+    },
+    staleTime: 0,
+  });
+
+  const pushMutation = useMutation({
+    mutationFn: async (businessId: string) => {
+      const res = await pushVerification(businessId);
+      if (!res.success) throw new Error(res.error || "推送失败");
+      return res;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["verifications"] }),
+    onError: (error) => console.error("推送失败:", error),
+  });
+
+  return {
+    verifications: data || [],
+    isLoading,
+    refetch,
+    pushMutation,
+  };
+}
+```
+
+## 3. 页面使用
+
+```typescript
+// app/(platform)/verifications/page.tsx
+"use client";
+
+import * as React from "react";
+import { useTopLoader } from "nextjs-toploader";
+import { toast } from "sonner";
+import { useVerifications } from "@/hooks/use-verifications";
+import { DataTableVirtualized } from "@/components/data-table/data-table-virtualized";
+import type { VerificationFilters } from "@/types/verification-types";
+
+export default function VerificationsPage() {
+  const { start, done } = useTopLoader();
+  const [filters, setFilters] = React.useState<VerificationFilters>({});
+  
+  const { verifications, isLoading, pushMutation } = useVerifications(filters);
+
+  const handlePush = React.useCallback(
+    async (businessId: string) => {
+      start();
+      try {
+        const res = await pushMutation.mutateAsync(businessId);
+        if (res.success) {
+          toast.success("推送成功");
+        } else {
+          toast.error(res.error || "推送失败");
+        }
+      } finally {
+        done();
+      }
+    },
+    [pushMutation] // ⚠️ 不添加 start/done
+  );
+
+  if (isLoading) return <DataTableSkeleton />;
+
+  return <DataTableVirtualized data={verifications} />;
+}
+```
+
+## 禁止事项
+
+- ❌ 页面直接调用 Server Action（应通过 Hook 封装）
+- ❌ Server Action 不检查用户登录状态
+- ❌ Server Action 不使用 try-catch
+- ❌ Server Action 返回格式不是 `{ success, data?, error? }`
+- ❌ Hook 中不使用 `useMutation` 处理变更操作
