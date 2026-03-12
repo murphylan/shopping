@@ -1,24 +1,24 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 import { Providers } from "@/components/providers";
 
-const geistSans = Geist({
+const geistSans = localFont({
+  src: "./fonts/GeistVF.woff2",
   variable: "--font-geist-sans",
-  subsets: ["latin"],
 });
 
-const geistMono = Geist_Mono({
+const geistMono = localFont({
+  src: "./fonts/GeistMonoVF.woff2",
   variable: "--font-geist-mono",
-  subsets: ["latin"],
 });
 
 export const metadata: Metadata = {
   title: "H5 小商城",
   description: "基于 Next.js 16 的 H5 小商城",
   icons: {
-    icon: "https://avatars.githubusercontent.com/u/112583176?s=48&v=4",
-    apple: "https://avatars.githubusercontent.com/u/112583176?s=48&v=4",
+    icon: "/images/logo.png",
+    apple: "/images/logo.png",
   },
 };
 

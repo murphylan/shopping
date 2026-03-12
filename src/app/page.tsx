@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useProducts } from "@/hooks/use-products";
 import { useCartStore } from "@/hooks/use-cart-store";
@@ -54,9 +55,11 @@ export default function HomePage() {
     <div className="mx-auto min-h-screen max-w-lg bg-gray-50 pb-16">
       {/* Header */}
       <div className="flex items-center gap-2.5 px-4 pt-4 pb-2">
-        <img
-          src="https://avatars.githubusercontent.com/u/112583176?s=48&v=4"
+        <Image
+          src="/images/logo.png"
           alt="H5 小商城"
+          width={32}
+          height={32}
           className="h-8 w-8 rounded-lg"
         />
         <span className="text-base font-semibold text-gray-900">H5 小商城</span>
@@ -118,29 +121,37 @@ export default function HomePage() {
         <div className="grid grid-cols-2 gap-2 px-4">
           {products.map((product) => (
             <div key={product.businessId} className="overflow-hidden rounded-xl bg-white shadow-sm">
-              <div className="relative aspect-square bg-gray-100">
-                {product.imageUrl ? (
-                  <img
-                    src={product.imageUrl}
-                    alt={product.name}
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  <div className="flex h-full w-full items-center justify-center">
-                    <Package className="h-10 w-10 text-gray-300" />
-                  </div>
-                )}
-                {product.category && (
-                  <Badge
-                    variant="secondary"
-                    className="absolute left-2 top-2 bg-white/90 text-[10px]"
-                  >
-                    {product.category}
-                  </Badge>
-                )}
-              </div>
+              <Link href={`/product/${product.businessId}`}>
+                <div className="relative aspect-square bg-gray-100">
+                  {product.imageUrl ? (
+                    <Image
+                      src={product.imageUrl}
+                      alt={product.name}
+                      fill
+                      sizes="(max-width: 512px) 50vw, 256px"
+                      className="object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center">
+                      <Package className="h-10 w-10 text-gray-300" />
+                    </div>
+                  )}
+                  {product.category && (
+                    <Badge
+                      variant="secondary"
+                      className="absolute left-2 top-2 bg-white/90 text-[10px]"
+                    >
+                      {product.category}
+                    </Badge>
+                  )}
+                </div>
+              </Link>
               <div className="p-3">
-                <h3 className="line-clamp-2 text-sm leading-tight text-gray-800">{product.name}</h3>
+                <Link href={`/product/${product.businessId}`}>
+                  <h3 className="line-clamp-2 text-sm leading-tight text-gray-800">
+                    {product.name}
+                  </h3>
+                </Link>
                 <div className="mt-2 flex items-end justify-between">
                   <div>
                     <span className="text-xs text-red-500">¥</span>

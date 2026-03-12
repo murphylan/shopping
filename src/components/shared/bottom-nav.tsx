@@ -1,10 +1,13 @@
 "use client";
 
+import { useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Home, Search, ShoppingCart, User } from "lucide-react";
 import { useCartStore } from "@/hooks/use-cart-store";
 import { cn } from "@/lib/utils";
+
+const emptySubscribe = () => () => {};
 
 const navItems = [
   { href: "/", icon: Home, label: "首页" },
@@ -16,6 +19,11 @@ const navItems = [
 export function BottomNav() {
   const pathname = usePathname();
   const itemCount = useCartStore((s) => s.getItemCount());
+  const mounted = useSyncExternalStore(
+    emptySubscribe,
+    () => true,
+    () => false
+  );
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-50 border-t bg-white/95 backdrop-blur-sm safe-area-bottom">
@@ -33,7 +41,7 @@ export function BottomNav() {
             >
               <span className="relative">
                 <item.icon className={cn("h-5 w-5", isActive && "stroke-[2.5]")} />
-                {item.showBadge && itemCount > 0 && (
+                {item.showBadge && mounted && itemCount > 0 && (
                   <span className="absolute -right-2.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-medium text-white">
                     {itemCount > 99 ? "99+" : itemCount}
                   </span>
