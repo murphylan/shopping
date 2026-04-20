@@ -1,7 +1,9 @@
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
+import type { Session } from "next-auth";
 import "./globals.css";
 import { Providers } from "@/components/providers";
+import { auth } from "@/auth";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff2",
@@ -30,15 +32,22 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  let session: Session | null = null;
+  try {
+    session = (await auth()) ?? null;
+  } catch {
+    session = null;
+  }
+
   return (
     <html lang="zh-CN">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        <Providers>{children}</Providers>
+        <Providers session={session}>{children}</Providers>
       </body>
     </html>
   );

@@ -4,16 +4,34 @@ import { useCartStore } from "@/hooks/use-cart-store";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ShoppingCart, Trash2, Minus, Plus, ChevronLeft, Package } from "lucide-react";
-import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useCallback, useState, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 export default function CartPage() {
   const { items, updateQuantity, removeItem, clearCart } = useCartStore();
   const router = useRouter();
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(
-    () => new Set(items.map((i) => i.productId))
-  );
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  const productIdsKey = useMemo(() => items.map((i) => i.productId).join("|"), [items]);
+
+  useEffect(() => {
+    setSelectedIds((prev) => {
+      const idSet = new Set(items.map((i) => i.productId));
+      if (idSet.size === 0) return new Set();
+      if (prev.size === 0) return idSet;
+      const next = new Set<string>();
+      for (const id of prev) {
+        if (idSet.has(id)) next.add(id);
+      }
+      for (const id of idSet) {
+        if (!next.has(id)) next.add(id);
+      }
+      return next;
+    });
+    // 仅当购物车中的商品 id 集合变化时同步；避免 items 引用变化导致重复执行
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- items 与 productIdsKey 同步变化
+  }, [productIdsKey]);
 
   const toggleSelect = useCallback((productId: string) => {
     setSelectedIds((prev) => {
@@ -93,9 +111,11 @@ export default function CartPage() {
 
             <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-gray-100">
               {item.imageUrl ? (
-                <img
+                <Image
                   src={item.imageUrl}
                   alt={item.productName}
+                  width={80}
+                  height={80}
                   className="h-full w-full object-cover"
                 />
               ) : (

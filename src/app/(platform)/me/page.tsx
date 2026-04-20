@@ -1,9 +1,20 @@
 "use client";
 
+import Link from "next/link";
 import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { User, LogIn, LogOut, ChevronRight, Package, Heart, MapPin, Settings } from "lucide-react";
+import {
+  User,
+  LogIn,
+  LogOut,
+  ChevronRight,
+  Package,
+  Heart,
+  MapPin,
+  Settings,
+  LayoutDashboard,
+} from "lucide-react";
 import { toast } from "sonner";
 
 const menuItems = [
@@ -16,6 +27,10 @@ const menuItems = [
 export default function MePage() {
   const { data: session } = useSession();
   const router = useRouter();
+
+  const items = session?.user?.isAdmin
+    ? [{ icon: LayoutDashboard, label: "管理后台", href: "/admin/products" }, ...menuItems]
+    : menuItems;
 
   const handleLogout = async () => {
     await signOut({ redirect: false });
@@ -59,19 +74,27 @@ export default function MePage() {
 
       {/* Menu List */}
       <div className="-mt-4 mx-4 rounded-xl bg-white shadow-sm">
-        {menuItems.map((item, index) => (
-          <button
-            key={item.label}
-            type="button"
-            className={`flex w-full items-center gap-3 px-4 py-3.5 text-left active:bg-gray-50 ${
-              index < menuItems.length - 1 ? "border-b border-gray-100" : ""
-            }`}
-          >
-            <item.icon className="h-5 w-5 text-gray-500" />
-            <span className="flex-1 text-sm text-gray-800">{item.label}</span>
-            <ChevronRight className="h-4 w-4 text-gray-400" />
-          </button>
-        ))}
+        {items.map((item, index) => {
+          const rowClass = `flex w-full items-center gap-3 px-4 py-3.5 text-left active:bg-gray-50 ${
+            index < items.length - 1 ? "border-b border-gray-100" : ""
+          }`;
+          const inner = (
+            <>
+              <item.icon className="h-5 w-5 text-gray-500" />
+              <span className="flex-1 text-sm text-gray-800">{item.label}</span>
+              <ChevronRight className="h-4 w-4 text-gray-400" />
+            </>
+          );
+          return item.href !== "#" ? (
+            <Link key={item.label} href={item.href} className={rowClass}>
+              {inner}
+            </Link>
+          ) : (
+            <button key={item.label} type="button" className={rowClass}>
+              {inner}
+            </button>
+          );
+        })}
       </div>
 
       {/* Logout */}

@@ -8,6 +8,20 @@
       "when": 1773199604212,
       "tag": "0000_solid_blackheart",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1776684237721,
+      "tag": "0001_user_password_hash",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1776686077659,
+      "tag": "0002_smiling_silhouette",
+      "breakpoints": true
     }
   ]
 }

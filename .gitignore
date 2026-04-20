@@ -30,6 +30,9 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
+# drizzle migration output (generated, not committed)
+/drizzle
+
 # env files (can opt-in for committing if needed)
 .env*
 

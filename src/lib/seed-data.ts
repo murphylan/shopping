@@ -1,6 +1,10 @@
 import type { Product } from "@/types/product-types";
 
-export const MOCK_PRODUCTS: Product[] = [
+/**
+ * `pnpm db:seed` 使用的商品快照（与数据库结构一致）。
+ * 仅由 seed 脚本引用，不作为运行时假数据。
+ */
+export const SEED_PRODUCTS: Product[] = [
   {
     id: "1",
     businessId: "P001",
@@ -208,29 +212,5 @@ export const MOCK_PRODUCTS: Product[] = [
     status: "active",
     createdAt: new Date(),
     updatedAt: new Date(),
-  },
-];
-
-export const MOCK_BANNERS = [
-  {
-    id: 1,
-    title: "新品首发",
-    subtitle: "限时优惠 低至5折",
-    bg: "from-pink-500 to-rose-500",
-    imageUrl: "/images/products/tshirt.jpg",
-  },
-  {
-    id: 2,
-    title: "品质好物",
-    subtitle: "精选推荐 品质保证",
-    bg: "from-blue-500 to-indigo-500",
-    imageUrl: "/images/products/headphone.jpg",
-  },
-  {
-    id: 3,
-    title: "超值特惠",
-    subtitle: "每日上新 惊喜不断",
-    bg: "from-orange-400 to-red-500",
-    imageUrl: "/images/products/candy.jpg",
   },
 ];

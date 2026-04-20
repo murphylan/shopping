@@ -47,6 +47,9 @@ export const useCartStore = create<CartStoreState>()(
       getTotal: () => get().items.reduce((sum, i) => sum + i.price * i.quantity, 0),
       getItemCount: () => get().items.reduce((sum, i) => sum + i.quantity, 0),
     }),
-    { name: "shopping-cart" }
+    {
+      name: "shopping-cart",
+      skipHydration: true,
+    }
   )
 );

@@ -6,35 +6,17 @@ import { useProducts } from "@/hooks/use-products";
 import { useCartStore } from "@/hooks/use-cart-store";
 import { BottomNav } from "@/components/shared/bottom-nav";
 import { Badge } from "@/components/ui/badge";
-import {
-  Shirt,
-  Smartphone,
-  UtensilsCrossed,
-  Gift,
-  Sparkles,
-  Sofa,
-  BookOpen,
-  MoreHorizontal,
-  ShoppingCart,
-  Package,
-} from "lucide-react";
+import { ShoppingCart, Package } from "lucide-react";
 import { toast } from "sonner";
 import { useCallback } from "react";
 
-const categories = [
-  { icon: Shirt, label: "服饰", color: "bg-pink-50 text-pink-500" },
-  { icon: Smartphone, label: "数码", color: "bg-blue-50 text-blue-500" },
-  { icon: UtensilsCrossed, label: "美食", color: "bg-orange-50 text-orange-500" },
-  { icon: Gift, label: "礼物", color: "bg-purple-50 text-purple-500" },
-  { icon: Sparkles, label: "美妆", color: "bg-rose-50 text-rose-500" },
-  { icon: Sofa, label: "家居", color: "bg-green-50 text-green-500" },
-  { icon: BookOpen, label: "图书", color: "bg-amber-50 text-amber-500" },
-  { icon: MoreHorizontal, label: "更多", color: "bg-gray-50 text-gray-500" },
-];
-
-import { MOCK_BANNERS } from "@/lib/mock-data";
+import { useHomePageConfig } from "@/hooks/use-home-config";
+import { getQuickEntryIcon } from "@/lib/quick-entry-icons";
+import { DEFAULT_HOME_BANNER } from "@/lib/home-config-defaults";
+import type { HomeQuickEntryPublic } from "@/types/home-config-types";
 
 export default function HomePage() {
+  const { data: homeConfig, isPending: isHomeConfigPending } = useHomePageConfig();
   const { products, isPending } = useProducts();
   const addItem = useCartStore((s) => s.addItem);
 
@@ -67,36 +49,58 @@ export default function HomePage() {
 
       {/* Banner */}
       <div className="px-4">
-        <div
-          className={`relative overflow-hidden rounded-2xl bg-gradient-to-r ${MOCK_BANNERS[0].bg} px-5 py-6 text-white`}
-        >
-          <div className="relative z-10">
-            <h2 className="text-xl font-bold">{MOCK_BANNERS[0].title}</h2>
-            <p className="mt-1 text-sm text-white/80">{MOCK_BANNERS[0].subtitle}</p>
+        {isHomeConfigPending ? (
+          <div className="h-28 animate-pulse rounded-2xl bg-gray-200" aria-hidden />
+        ) : (
+          <div
+            className={`relative overflow-hidden rounded-2xl bg-gradient-to-r ${(homeConfig?.banner ?? DEFAULT_HOME_BANNER).gradientClass} px-5 py-6 text-white`}
+          >
+            <div className="relative z-10">
+              <h2 className="text-xl font-bold">
+                {(homeConfig?.banner ?? DEFAULT_HOME_BANNER).title}
+              </h2>
+              <p className="mt-1 text-sm text-white/80">
+                {(homeConfig?.banner ?? DEFAULT_HOME_BANNER).subtitle}
+              </p>
+            </div>
+            <div className="absolute -right-4 -top-4 h-24 w-24 rounded-full bg-white/10" />
+            <div className="absolute -bottom-6 -right-2 h-20 w-20 rounded-full bg-white/10" />
           </div>
-          <div className="absolute -right-4 -top-4 h-24 w-24 rounded-full bg-white/10" />
-          <div className="absolute -bottom-6 -right-2 h-20 w-20 rounded-full bg-white/10" />
-        </div>
+        )}
       </div>
 
-      {/* Categories */}
+      {/* 金刚区 */}
       <div className="px-4 pt-5">
-        <div className="grid grid-cols-4 gap-3">
-          {categories.map((cat) => (
-            <Link
-              key={cat.label}
-              href={`/search?keyword=${encodeURIComponent(cat.label)}`}
-              className="flex flex-col items-center gap-1.5"
-            >
-              <div
-                className={`flex h-12 w-12 items-center justify-center rounded-2xl ${cat.color}`}
-              >
-                <cat.icon className="h-5 w-5" />
+        {isHomeConfigPending ? (
+          <div className="grid grid-cols-4 gap-3">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="flex flex-col items-center gap-1.5">
+                <div className="h-12 w-12 animate-pulse rounded-2xl bg-gray-200" />
+                <div className="h-3 w-10 animate-pulse rounded bg-gray-200" />
               </div>
-              <span className="text-xs text-gray-700">{cat.label}</span>
-            </Link>
-          ))}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-4 gap-3">
+            {(homeConfig?.quickEntries ?? []).map((cat: HomeQuickEntryPublic) => {
+              const Icon = getQuickEntryIcon(cat.iconKey);
+              return (
+                <Link
+                  key={cat.id}
+                  href={`/search?keyword=${encodeURIComponent(cat.searchKeyword)}`}
+                  className="flex flex-col items-center gap-1.5"
+                >
+                  <div
+                    className={`flex h-12 w-12 items-center justify-center rounded-2xl ${cat.colorClass}`}
+                  >
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  <span className="text-xs text-gray-700">{cat.label}</span>
+                </Link>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Section Title */}

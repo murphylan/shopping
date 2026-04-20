@@ -124,6 +124,30 @@
   }
 }
 
+/* 与 According 管理台一致的列表卡片与滚动条 */
+@layer utilities {
+  .card-enterprise {
+    @apply rounded-xl border border-border bg-card shadow-sm;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    @apply rounded-full bg-gray-300 dark:bg-gray-600;
+  }
+
+  .scrollbar-thin:hover::-webkit-scrollbar-thumb {
+    @apply bg-gray-400 dark:bg-gray-500;
+  }
+}
+
 .safe-area-bottom {
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }

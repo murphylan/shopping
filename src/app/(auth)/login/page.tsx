@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, Suspense } from "react";
-import { signIn } from "next-auth/react";
+import { getSession, signIn } from "next-auth/react";
+import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -16,7 +17,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { LogIn, ShoppingCart } from "lucide-react";
+import { LogIn } from "lucide-react";
 import { toast } from "sonner";
 
 const loginSchema = z.object({
@@ -34,7 +35,7 @@ function LoginForm() {
 
   const form = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
-    defaultValues: { email: "demo@example.com", password: "demo123" },
+    defaultValues: { email: "user@example.com", password: "user123" },
   });
 
   const onSubmit = async (values: LoginFormData) => {
@@ -47,7 +48,12 @@ function LoginForm() {
       });
       if (res?.ok) {
         toast.success("登录成功");
-        router.push(callbackUrl);
+        const session = await getSession();
+        if (session?.user?.isAdmin) {
+          router.push("/admin/products");
+        } else {
+          router.push(callbackUrl);
+        }
       } else {
         toast.error(res?.error ?? "登录失败");
       }
@@ -60,10 +66,12 @@ function LoginForm() {
     <div className="mx-auto flex min-h-screen max-w-lg flex-col bg-white">
       {/* Logo Area */}
       <div className="flex flex-col items-center gap-3 px-8 pt-16 pb-8">
-        <img
+        <Image
           src="https://avatars.githubusercontent.com/u/112583176?s=48&v=4"
           alt="H5 小商城"
-          className="h-16 w-16 rounded-2xl"
+          width={64}
+          height={64}
+          className="rounded-2xl"
         />
         <h1 className="text-xl font-bold text-gray-900">H5 小商城</h1>
         <p className="text-sm text-gray-400">登录后享受完整购物体验</p>
@@ -117,7 +125,8 @@ function LoginForm() {
         </Form>
 
         <p className="mt-6 text-center text-xs text-gray-400">
-          演示账号: demo@example.com / demo123
+          演示：普通用户 user@example.com / user123；管理员 admin@example.com /
+          admin123（登录后进管理后台）
         </p>
       </div>
     </div>
