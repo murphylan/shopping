@@ -41,9 +41,9 @@ banner() {
 }
 
 # ── 常量 ──
-REGISTRY="119.91.228.113:5000"
+REGISTRY="zot.murphylan.cloud"
 IMAGE="${REGISTRY}/murphy/shopping:latest"
-PG_IMAGE="mirror.ccs.tencentyun.com/library/postgres:17-alpine"
+PG_IMAGE="${REGISTRY}/library/postgres:17-alpine"
 
 # ── 默认值 ──
 APP_PORT=3005
@@ -131,8 +131,9 @@ log "podman-compose 已就绪"
 # ─────────────────────────────────────────────────────────────
 banner "Step 2/5 — 拉取镜像"
 
-info "拉取 $IMAGE ..."
-podman pull "$IMAGE"
+info "拉取镜像..."
+podman pull --tls-verify=false "$IMAGE"
+podman pull --tls-verify=false "$PG_IMAGE"
 log "镜像拉取完成"
 
 mkdir -p "$INSTALL_DIR"
@@ -344,5 +345,5 @@ echo "    podman-compose restart app    # 重启应用"
 echo "    podman-compose down           # 停止服务"
 echo ""
 echo -e "  ${YELLOW}更新部署:${NC}"
-echo "    podman pull $IMAGE && podman-compose down && podman-compose up -d"
+echo "    podman pull --tls-verify=false $IMAGE && podman-compose down && podman-compose up -d"
 echo ""
