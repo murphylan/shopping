@@ -42,8 +42,17 @@ banner() {
 
 # ── 常量 ──
 REGISTRY="zot.murphylan.cloud"
+
+ARCH=$(uname -m)
+case "$ARCH" in
+  x86_64)  ARCH_TAG="amd64" ;;
+  aarch64) ARCH_TAG="arm64" ;;
+  arm64)   ARCH_TAG="arm64" ;;
+  *)       err "不支持的架构: $ARCH"; exit 1 ;;
+esac
+
 IMAGE="${REGISTRY}/murphy/shopping:latest"
-PG_IMAGE="${REGISTRY}/library/postgres:17-alpine"
+PG_IMAGE="${REGISTRY}/library/postgres:17-alpine-${ARCH_TAG}"
 
 # ── 默认值 ──
 APP_PORT=3005
@@ -90,6 +99,7 @@ echo "  安装目录:     $INSTALL_DIR"
 echo "  应用端口:     $APP_PORT"
 echo "  数据库模式:   $DB_MODE"
 echo "  数据库名:     $DB_NAME"
+echo "  系统架构:     $ARCH ($ARCH_TAG)"
 echo "  镜像:         $IMAGE"
 [ -n "$DOMAIN" ] && echo "  公网域名:     $DOMAIN"
 echo ""
@@ -321,12 +331,27 @@ PROJECT_NAME="${COMPOSE_PROJECT_NAME:-shopping}"
 APP_CONTAINER="${PROJECT_NAME}_app_1"
 
 info "同步数据库结构 (drizzle-kit push)..."
-if podman exec "$APP_CONTAINER" npx drizzle-kit push --force 2>/dev/null; then
+podman cp "$APP_CONTAINER":/app/drizzle.config.ts ./drizzle.config.ts 2>/dev/null
+mkdir -p src/server/db/schema
+podman cp "$APP_CONTAINER":/app/src/server/db/. ./src/server/db/ 2>/dev/null
+npm init -y >/dev/null 2>&1
+npm install --silent drizzle-kit drizzle-orm postgres >/dev/null 2>&1
+
+if [ "$DB_MODE" = "shared" ]; then
+  MIGRATE_DB_URL="postgresql://postgres:postgres@localhost:${DB_PORT}/${DB_NAME}"
+else
+  MIGRATE_DB_URL="postgresql://${POSTGRES_USER:-shopping}:${POSTGRES_PASSWORD}@localhost:5432/${POSTGRES_DB:-shopping}"
+fi
+
+if DATABASE_URL="$MIGRATE_DB_URL" npx drizzle-kit push --force; then
   log "数据库结构同步完成"
 else
   warn "数据库结构同步失败，可稍后手动执行:"
-  echo "  cd $INSTALL_DIR && podman-compose exec app npx drizzle-kit push --force"
+  echo "  cd $INSTALL_DIR && DATABASE_URL=\"$MIGRATE_DB_URL\" npx drizzle-kit push --force"
 fi
+
+rm -f drizzle.config.ts package.json package-lock.json
+rm -rf src node_modules
 
 # ─────────────────────────────────────────────────────────────
 # 完成
