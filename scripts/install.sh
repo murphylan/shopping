@@ -97,7 +97,7 @@ if [ "$SEED_ONLY" = true ]; then
   source .env 2>/dev/null || true
 
   if [ -n "${DATABASE_URL:-}" ]; then
-    MIGRATE_DB_URL="$DATABASE_URL"
+    MIGRATE_DB_URL="${DATABASE_URL//host.containers.internal/localhost}"
   elif [ -n "${POSTGRES_PASSWORD:-}" ]; then
     MIGRATE_DB_URL="postgresql://${POSTGRES_USER:-shopping}:${POSTGRES_PASSWORD}@localhost:5432/${POSTGRES_DB:-shopping}"
   else
