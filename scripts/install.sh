@@ -16,6 +16,7 @@
 #    --db-name <NAME>      数据库名（默认 shopping）
 #    --install-dir <DIR>   安装目录（默认 /home/$USER/work/shopping）
 #    --skip-db-init        跳过共享 PG 容器创建（已存在时使用）
+#    --seed-only           仅重跑 seed（需已完成首次部署）
 #    --yes                 跳过确认提示，全自动
 # ─────────────────────────────────────────────────────────────
 set -euo pipefail
@@ -62,6 +63,7 @@ DB_PORT=5433
 DB_NAME="shopping"
 INSTALL_DIR=""
 SKIP_DB_INIT=false
+SEED_ONLY=false
 AUTO_YES=false
 
 # ── 解析参数 ──
@@ -74,12 +76,74 @@ while [[ $# -gt 0 ]]; do
     --db-name)     DB_NAME="$2";       shift 2 ;;
     --install-dir) INSTALL_DIR="$2";   shift 2 ;;
     --skip-db-init) SKIP_DB_INIT=true; shift ;;
+    --seed-only)   SEED_ONLY=true;     shift ;;
     --yes|-y)      AUTO_YES=true;      shift ;;
     *)             warn "未知参数: $1"; shift ;;
   esac
 done
 
 INSTALL_DIR="${INSTALL_DIR:-/home/$USER/work/shopping}"
+
+# ── seed-only 模式：仅重跑初始数据导入 ──
+if [ "$SEED_ONLY" = true ]; then
+  banner "Shopping — 重跑 Seed"
+  cd "$INSTALL_DIR"
+
+  if [ ! -f .env ]; then
+    err "未找到 $INSTALL_DIR/.env，请先完成首次部署"
+    exit 1
+  fi
+
+  source .env 2>/dev/null || true
+
+  if [ -n "${DATABASE_URL:-}" ]; then
+    MIGRATE_DB_URL="$DATABASE_URL"
+  elif [ -n "${POSTGRES_PASSWORD:-}" ]; then
+    MIGRATE_DB_URL="postgresql://${POSTGRES_USER:-shopping}:${POSTGRES_PASSWORD}@localhost:5432/${POSTGRES_DB:-shopping}"
+  else
+    err ".env 中未找到数据库连接信息"
+    exit 1
+  fi
+
+  GITHUB_RAW="https://raw.githubusercontent.com/murphylan/shopping/main"
+  SEED_FILES=(
+    "scripts/seed.ts"
+    "src/server/db/index.ts"
+    "src/server/db/schema/index.ts"
+    "src/server/db/schema/users.ts"
+    "src/server/db/schema/products.ts"
+    "src/server/db/schema/home-settings.ts"
+    "src/server/db/schema/cart.ts"
+    "src/lib/home-config-defaults.ts"
+    "src/lib/seed-data.ts"
+    "src/lib/quick-entry-icons.ts"
+    "src/types/product-types.ts"
+    "src/types/home-config-types.ts"
+    "tsconfig.json"
+  )
+
+  info "从 GitHub 下载 seed 文件..."
+  for f in "${SEED_FILES[@]}"; do
+    mkdir -p "$(dirname "$f")"
+    if ! curl -fsSL "$GITHUB_RAW/$f" -o "$f"; then
+      err "下载失败: $f"
+      exit 1
+    fi
+  done
+
+  npm init -y >/dev/null 2>&1
+  npm install --silent drizzle-orm postgres bcryptjs tsx >/dev/null 2>&1
+
+  if DATABASE_URL="$MIGRATE_DB_URL" npx tsx scripts/seed.ts; then
+    log "初始数据导入完成"
+  else
+    err "初始数据导入失败"
+  fi
+
+  rm -f package.json package-lock.json tsconfig.json
+  rm -rf src scripts node_modules
+  exit 0
+fi
 
 # ── 确认函数（兼容 curl | bash，从 /dev/tty 读取） ──
 confirm() {
@@ -112,7 +176,7 @@ fi
 # ─────────────────────────────────────────────────────────────
 # Step 1: 检查系统依赖
 # ─────────────────────────────────────────────────────────────
-banner "Step 1/5 — 检查系统依赖"
+banner "Step 1/6 — 检查系统依赖"
 
 MISSING=()
 
@@ -139,7 +203,7 @@ log "podman-compose 已就绪"
 # ─────────────────────────────────────────────────────────────
 # Step 2: 拉取镜像 + 生成 compose.yml
 # ─────────────────────────────────────────────────────────────
-banner "Step 2/5 — 拉取镜像"
+banner "Step 2/6 — 拉取镜像"
 
 info "拉取镜像..."
 podman pull --tls-verify=false "$IMAGE"
@@ -209,7 +273,7 @@ log "compose.yml 已生成"
 # ─────────────────────────────────────────────────────────────
 # Step 3: 配置环境变量
 # ─────────────────────────────────────────────────────────────
-banner "Step 3/5 — 配置环境变量"
+banner "Step 3/6 — 配置环境变量"
 
 AUTH_SECRET=$(openssl rand -base64 32)
 PG_PASSWORD=$(openssl rand -base64 16 | tr -d '/+=' | head -c 20)
@@ -254,7 +318,7 @@ log ".env 已生成"
 # ─────────────────────────────────────────────────────────────
 # Step 4: 数据库准备（仅 shared 模式）
 # ─────────────────────────────────────────────────────────────
-banner "Step 4/5 — 数据库准备"
+banner "Step 4/6 — 数据库准备"
 
 if [ "$DB_MODE" = "shared" ]; then
   if [ "$SKIP_DB_INIT" = false ]; then
@@ -308,7 +372,7 @@ fi
 # ─────────────────────────────────────────────────────────────
 # Step 5: 启动服务 + 同步数据库结构
 # ─────────────────────────────────────────────────────────────
-banner "Step 5/5 — 启动服务"
+banner "Step 5/6 — 启动服务"
 
 info "启动服务..."
 podman-compose down 2>/dev/null || true
@@ -330,18 +394,18 @@ source .env 2>/dev/null || true
 PROJECT_NAME="${COMPOSE_PROJECT_NAME:-shopping}"
 APP_CONTAINER="${PROJECT_NAME}_app_1"
 
+if [ "$DB_MODE" = "shared" ]; then
+  MIGRATE_DB_URL="postgresql://postgres:postgres@localhost:${DB_PORT}/${DB_NAME}"
+else
+  MIGRATE_DB_URL="postgresql://${POSTGRES_USER:-shopping}:${POSTGRES_PASSWORD}@localhost:5432/${POSTGRES_DB:-shopping}"
+fi
+
 info "同步数据库结构 (drizzle-kit push)..."
 podman cp "$APP_CONTAINER":/app/drizzle.config.ts ./drizzle.config.ts 2>/dev/null
 mkdir -p src/server/db/schema
 podman cp "$APP_CONTAINER":/app/src/server/db/. ./src/server/db/ 2>/dev/null
 npm init -y >/dev/null 2>&1
 npm install --silent drizzle-kit drizzle-orm postgres >/dev/null 2>&1
-
-if [ "$DB_MODE" = "shared" ]; then
-  MIGRATE_DB_URL="postgresql://postgres:postgres@localhost:${DB_PORT}/${DB_NAME}"
-else
-  MIGRATE_DB_URL="postgresql://${POSTGRES_USER:-shopping}:${POSTGRES_PASSWORD}@localhost:5432/${POSTGRES_DB:-shopping}"
-fi
 
 if DATABASE_URL="$MIGRATE_DB_URL" npx drizzle-kit push --force; then
   log "数据库结构同步完成"
@@ -350,8 +414,48 @@ else
   echo "  cd $INSTALL_DIR && DATABASE_URL=\"$MIGRATE_DB_URL\" npx drizzle-kit push --force"
 fi
 
-rm -f drizzle.config.ts package.json package-lock.json
-rm -rf src node_modules
+# ─────────────────────────────────────────────────────────────
+# Step 6: 导入初始数据 (seed)
+# ─────────────────────────────────────────────────────────────
+banner "Step 6/6 — 导入初始数据"
+
+GITHUB_RAW="https://raw.githubusercontent.com/murphylan/shopping/main"
+SEED_FILES=(
+  "scripts/seed.ts"
+  "src/lib/home-config-defaults.ts"
+  "src/lib/seed-data.ts"
+  "src/lib/quick-entry-icons.ts"
+  "src/types/product-types.ts"
+  "src/types/home-config-types.ts"
+  "tsconfig.json"
+)
+
+info "从 GitHub 下载 seed 文件..."
+SEED_DOWNLOAD_OK=true
+for f in "${SEED_FILES[@]}"; do
+  mkdir -p "$(dirname "$f")"
+  if ! curl -fsSL "$GITHUB_RAW/$f" -o "$f"; then
+    warn "下载失败: $f"
+    SEED_DOWNLOAD_OK=false
+  fi
+done
+
+if [ "$SEED_DOWNLOAD_OK" = true ]; then
+  npm install --silent bcryptjs tsx >/dev/null 2>&1
+
+  if DATABASE_URL="$MIGRATE_DB_URL" npx tsx scripts/seed.ts; then
+    log "初始数据导入完成"
+  else
+    warn "初始数据导入失败，可稍后手动执行:"
+    echo "  cd $INSTALL_DIR && DATABASE_URL=\"$MIGRATE_DB_URL\" npx tsx scripts/seed.ts"
+  fi
+else
+  warn "seed 文件下载不完整，跳过导入。可稍后手动执行:"
+  echo "  cd $INSTALL_DIR && DATABASE_URL=\"$MIGRATE_DB_URL\" npx tsx scripts/seed.ts"
+fi
+
+rm -f drizzle.config.ts package.json package-lock.json tsconfig.json
+rm -rf src scripts node_modules
 
 # ─────────────────────────────────────────────────────────────
 # 完成
@@ -371,4 +475,7 @@ echo "    podman-compose down           # 停止服务"
 echo ""
 echo -e "  ${YELLOW}更新部署:${NC}"
 echo "    podman pull --tls-verify=false $IMAGE && podman-compose down && podman-compose up -d"
+echo ""
+echo -e "  ${YELLOW}重跑 seed（初始化数据）:${NC}"
+echo "    curl -fsSL https://github.com/murphylan/shopping/releases/download/stable/install.sh | bash -s -- --seed-only"
 echo ""
