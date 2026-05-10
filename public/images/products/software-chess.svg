@@ -1,0 +1,12 @@
+<svg width="800" height="800" viewBox="0 0 800 800" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="800" height="800" rx="72" fill="#FFF7ED"/>
+  <circle cx="400" cy="352" r="210" fill="#FED7AA"/>
+  <rect x="212" y="164" width="376" height="376" rx="34" fill="#FFFBEB"/>
+  <path d="M274 238H526M274 301H526M274 364H526M274 427H526M337 238V490M400 238V490M463 238V490" stroke="#FB923C" stroke-width="10" stroke-linecap="round"/>
+  <circle cx="337" cy="301" r="36" fill="#EF4444"/>
+  <circle cx="463" cy="427" r="36" fill="#111827"/>
+  <circle cx="400" cy="364" r="40" fill="#FFFFFF" stroke="#F97316" stroke-width="10"/>
+  <text x="400" y="380" text-anchor="middle" font-family="Arial, sans-serif" font-size="34" font-weight="700" fill="#C2410C">R</text>
+  <rect x="246" y="584" width="308" height="76" rx="38" fill="#F97316"/>
+  <text x="400" y="635" text-anchor="middle" font-family="Arial, sans-serif" font-size="40" font-weight="700" fill="#FFFFFF">AI aËYÃ</text>
+</svg>

@@ -3,7 +3,7 @@
  * 用法：pnpm db:seed（需先配置 .env.local 中的 DATABASE_URL，并已执行迁移或 push）
  */
 import bcrypt from "bcryptjs";
-import { and, count, eq, inArray, notInArray } from "drizzle-orm";
+import { and, eq, inArray, notInArray } from "drizzle-orm";
 
 import { DEFAULT_HOME_BANNER, DEFAULT_HOME_QUICK_ENTRIES } from "@/lib/home-config-defaults";
 import { SEED_PRODUCTS } from "@/lib/seed-data";
@@ -128,24 +128,40 @@ async function seedHomePage() {
     console.log("[seed] home_banner_config: inserted default row");
   }
 
-  const [entryCountRow] = await db.select({ n: count() }).from(homeQuickEntries);
-  const entryCount = Number(entryCountRow?.n ?? 0);
-  if (entryCount === 0) {
-    const now = new Date();
-    for (const e of DEFAULT_HOME_QUICK_ENTRIES) {
+  const now = new Date();
+  for (const e of DEFAULT_HOME_QUICK_ENTRIES) {
+    const [existing] = await db
+      .select({ id: homeQuickEntries.id })
+      .from(homeQuickEntries)
+      .where(eq(homeQuickEntries.label, e.label))
+      .limit(1);
+
+    if (existing) {
+      await db
+        .update(homeQuickEntries)
+        .set({
+          iconKey: e.iconKey,
+          searchKeyword: e.searchKeyword,
+          colorClass: e.colorClass,
+          sortOrder: e.sortOrder,
+          enabled: e.enabled ?? true,
+          updatedAt: now,
+        })
+        .where(eq(homeQuickEntries.id, existing.id));
+    } else {
       await db.insert(homeQuickEntries).values({
         label: e.label,
         iconKey: e.iconKey,
         searchKeyword: e.searchKeyword,
         colorClass: e.colorClass,
         sortOrder: e.sortOrder,
-        enabled: true,
+        enabled: e.enabled ?? true,
         createdAt: now,
         updatedAt: now,
       });
     }
-    console.log(`[seed] home_quick_entries: ${DEFAULT_HOME_QUICK_ENTRIES.length} rows`);
   }
+  console.log(`[seed] home_quick_entries: ${DEFAULT_HOME_QUICK_ENTRIES.length} rows (label sync)`);
 }
 
 async function main() {

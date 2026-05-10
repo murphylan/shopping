@@ -157,7 +157,9 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
       {product.description && (
         <div className="px-4 pt-4">
           <h2 className="text-sm font-semibold text-gray-900">商品详情</h2>
-          <p className="mt-2 text-sm leading-relaxed text-gray-600">{product.description}</p>
+          <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-gray-600">
+            {product.description}
+          </p>
         </div>
       )}
 

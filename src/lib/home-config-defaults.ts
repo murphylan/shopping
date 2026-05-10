@@ -15,6 +15,7 @@ export const DEFAULT_HOME_QUICK_ENTRIES: {
   searchKeyword: string;
   colorClass: string;
   sortOrder: number;
+  enabled?: boolean;
 }[] = [
   {
     label: "服饰",
@@ -52,9 +53,9 @@ export const DEFAULT_HOME_QUICK_ENTRIES: {
     sortOrder: 4,
   },
   {
-    label: "家居",
-    iconKey: "sofa",
-    searchKeyword: "家居",
+    label: "软件服务",
+    iconKey: "laptop",
+    searchKeyword: "软件服务",
     colorClass: "bg-green-50 text-green-500",
     sortOrder: 5,
   },
@@ -72,6 +73,14 @@ export const DEFAULT_HOME_QUICK_ENTRIES: {
     colorClass: "bg-gray-50 text-gray-500",
     sortOrder: 7,
   },
+  {
+    label: "家居",
+    iconKey: "sofa",
+    searchKeyword: "家居",
+    colorClass: "bg-green-50 text-green-500",
+    sortOrder: 8,
+    enabled: false,
+  },
 ];
 
 /** 接口失败或未迁移时，前台使用的完整默认首页配置 */
@@ -82,7 +91,7 @@ export function getDefaultHomePageConfig(): HomePageConfig {
       subtitle: DEFAULT_HOME_BANNER.subtitle,
       gradientClass: DEFAULT_HOME_BANNER.gradientClass,
     },
-    quickEntries: DEFAULT_HOME_QUICK_ENTRIES.map((e, i) => ({
+    quickEntries: DEFAULT_HOME_QUICK_ENTRIES.filter((e) => e.enabled !== false).map((e, i) => ({
       id: `fallback-${i}`,
       label: e.label,
       iconKey: e.iconKey,

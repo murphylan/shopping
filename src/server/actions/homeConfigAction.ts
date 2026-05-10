@@ -71,7 +71,7 @@ export async function getHomePageConfig(): Promise<
 
     let quickEntries: HomeQuickEntryPublic[];
     if (rows.length === 0) {
-      quickEntries = DEFAULT_HOME_QUICK_ENTRIES.map((e, i) => ({
+      quickEntries = DEFAULT_HOME_QUICK_ENTRIES.filter((e) => e.enabled !== false).map((e, i) => ({
         id: `fallback-${i}`,
         label: e.label,
         iconKey: e.iconKey,

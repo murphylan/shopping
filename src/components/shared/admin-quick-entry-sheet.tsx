@@ -41,7 +41,7 @@ const ICON_LABELS: Record<string, string> = {
   book: "图书",
   more: "更多",
   package: "包裹",
-  laptop: "电脑",
+  laptop: "软件服务",
 };
 
 const defaultValues: HomeQuickEntryCreateData = {
